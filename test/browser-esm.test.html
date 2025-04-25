@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>CTE Browser ESM Test</title>
+    <style>
+        body {
+            font-family: sans-serif;
+        }
+
+        pre {
+            background-color: #eee;
+            padding: 10px;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Test: Browser ES Module (dist/cte.web.js)</h1>
+    <p>Output (also check browser's developer console):</p>
+    <pre id="output"></pre>
+
+    <script type="module">
+        import {
+            CteEncoder,
+            CteDecoder,
+            PUBLIC_KEY_SIZE,
+            SIGNATURE_SIZE
+        } from '../dist/cte.web.js';
+
+        const outputElement = document.getElementById('output');
+        function logToPage(...args) {
+            console.log(...args);
+
+            const pageMessage = args.map(arg => {
+                if (arg instanceof Uint8Array) {
+                    const maxLen = 32;
+                    const elements = Array.from(arg.slice(0, maxLen)).join(', ');
+                    const suffix = arg.length > maxLen ? '...' : '';
+                    return `Uint8Array(${arg.length})[${elements}${suffix}]`;
+                }
+                if (typeof arg === 'object' && arg !== null) {
+                    try {
+                        return JSON.stringify(arg, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2);
+                    } catch (e) {
+                        return `[Unserializable Object: ${e.message}]`;
+                    }
+                }
+                return String(arg);
+            }).join(' ');
+
+            if (outputElement) {
+                outputElement.textContent += pageMessage + '\n';
+                outputElement.scrollTop = outputElement.scrollHeight;
+            }
+        }
+
+        function errorToPage(...args) {
+            console.error(...args);
+            const pageMessage = args.map(arg => {
+                if (arg instanceof Error) {
+                    return `${arg.name}: ${arg.message}\nStack: ${arg.stack || '[No stack available]'}`;
+                }
+                if (arg instanceof Uint8Array) {
+                    const maxLen = 32;
+                    const elements = Array.from(arg.slice(0, maxLen)).join(', ');
+                    const suffix = arg.length > maxLen ? '...' : '';
+                    return `Uint8Array(${arg.length})[${elements}${suffix}]`;
+                }
+                if (typeof arg === 'object' && arg !== null) {
+                    try {
+                        return JSON.stringify(arg, (_, v) => typeof v === 'bigint' ? v.toString() : v, 2);
+                    } catch (e) {
+                        return `[Unserializable Object: ${e.message}]`;
+                    }
+                }
+                return String(arg);
+            }).join(' ');
+            if (outputElement) {
+                outputElement.textContent += 'ERROR: ' + pageMessage + '\n';
+                outputElement.scrollTop = outputElement.scrollHeight;
+            }
+        }
+
+
+        async function runExample() {
+            try {
+                logToPage("--- Starting Test: Browser ESM (dist/cte.web.js) ---");
+
+                logToPage("Creating encoder...");
+                const encoder = await CteEncoder.create();
+
+                const pubKey1 = new Uint8Array(PUBLIC_KEY_SIZE).fill(0x11);
+                const pubKey2 = new Uint8Array(PUBLIC_KEY_SIZE).fill(0x22);
+                const signature1 = new Uint8Array(SIGNATURE_SIZE).fill(0xAA);
+                const commandPayload = "Hello from JS via WASM (Browser ESM)!";
+
+                encoder.addPublicKeyList([pubKey1, pubKey2]);
+                encoder.addSignatureList([signature1]);
+                encoder.addIndexReference(5);
+                encoder.addCommandData(commandPayload);
+
+                const encodedBuffer = encoder.getEncodedBuffer();
+                logToPage("Encoded Buffer:", encodedBuffer);
+
+                if (encodedBuffer && encodedBuffer.length > 0) {
+                    logToPage("\nCreating decoder...");
+                    const decoder = await CteDecoder.create(encodedBuffer);
+
+                    try {
+                        let field;
+                        while ((field = decoder.nextField()) !== null) {
+                            logToPage("Decoded Field:", field);
+                            if (field.typeName === 'CommandData') {
+                                logToPage("  Command Text:", field.text);
+                                logToPage("  Command Data:", field.data);
+                            }
+                        }
+                        logToPage("Decoding finished cleanly.");
+                    } catch (decodeError) {
+                        errorToPage("Error during decoding loop:", decodeError);
+                    }
+                }
+                logToPage("--- Finished Test: Browser ESM ---");
+
+            } catch (error) {
+                errorToPage("--- ERROR in Browser ESM Test ---:", error);
+            }
+        }
+
+        runExample();
+    </script>
+</body>
+
+</html>

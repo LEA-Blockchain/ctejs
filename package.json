@@ -1,0 +1,81 @@
+{
+  "name": "@leachain/ctejs",
+  "version": "1.0.0",
+  "description": "JavaScript wrapper for the CTE WASM library providing encoding and decoding capabilities.",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/cte.node.cjs",
+  "module": "./dist/cte.node.mjs",
+  "browser": "./dist/cte.web.js",
+  "exports": {
+    ".": {
+      "node": {
+        "import": "./dist/cte.node.mjs",
+        "require": "./dist/cte.node.cjs"
+      },
+      "browser": {
+        "import": "./dist/cte.web.js",
+        "script": "./dist/cte.web.min.js"
+      },
+      "default": "./dist/cte.node.mjs"
+    }
+  },
+  "scripts": {
+    "clean": "del-cli ./dist",
+    "prepare": "lea-rl 'https://github.com/LEA-Blockchain/serialization-codecs/releases/download/v1.0.0/cte-v1.0.0-mvp.tar.gz' ./src/",
+    "build:node:esm": "esbuild src/cte.js --bundle --outfile=dist/cte.node.mjs --format=esm --platform=node --loader:.wasm=binary --sourcemap",
+    "build:node:cjs": "esbuild src/cte.js --bundle --outfile=dist/cte.node.cjs --format=cjs --platform=node --loader:.wasm=binary --sourcemap",
+    "build:browser:esm": "esbuild src/cte.js --bundle --outfile=dist/cte.web.js --format=esm --platform=browser --loader:.wasm=binary --sourcemap",
+    "build:browser:iife": "esbuild src/cte.js --bundle --outfile=dist/cte.web.min.js --format=iife --global-name=LEA_CTE --platform=browser --loader:.wasm=binary --minify --sourcemap",
+    "build": "npm run clean && npm run build:node:esm && npm run build:node:cjs && npm run build:browser:esm && npm run build:browser:iife",
+    "test:node:esm": "node ./test/node-esm.test.js",
+    "test:node:cjs": "node ./test/node-cjs.test.cjs",
+    "test:browser": "concurrently -n esm,iife \"browser-sync start --server '.' --files './dist/*.js, ./test/*.html' --port 4000 --ui-port 3001 --startPath '/test/browser-esm.test.html'\" \"browser-sync start --server '.' --files './dist/*.js, ./test/*.html' --port 4001 --ui-port 3002 --startPath '/test/browser-iife.test.html'\"",
+    "test:node": "npm run test:node:esm && npm run test:node:cjs",
+    "test": "npm run test:node:esm && npm run test:node:cjs && npm run test:browser",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "prepublishOnly": "npm run lint && npm run build && npm run test:node"
+  },
+  "author": {
+    "name": "Allwin Ketnawang",
+    "url": "https://getlea.org"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "browser-sync": "^3.0.4",
+    "concurrently": "^9.1.2",
+    "del-cli": "^5.1.0",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "eslint-config-prettier": "^10.1.2",
+    "eslint-plugin-prettier": "^5.2.6",
+    "lea-rl": "^1.0.0",
+    "prettier": "^3.5.3",
+    "tar": "^7.4.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://github.com/LEA-Blockchain/ctejs#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LEA-Blockchain/ctejs.git"
+  },
+  "keywords": [
+    "cte",
+    "wasm",
+    "encoder",
+    "decoder",
+    "binary",
+    "serialization",
+    "leachain",
+    "lea"
+  ]
+}
