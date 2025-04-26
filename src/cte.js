@@ -38,7 +38,6 @@ export class CteEncoder {
     #wasmExports = null;
     #wasmMemory = null;
     #encoderHandle = 0;
-    #isFinalized = false;
 
     constructor(wasmExports, wasmMemory, encoderHandle) {
         if (!wasmExports || !wasmMemory || !encoderHandle) {
@@ -73,14 +72,7 @@ export class CteEncoder {
         return new CteEncoder(exports, memory, handle);
     }
 
-    #checkFinalized() {
-        if (this.#isFinalized) {
-            throw new Error('CteEncoder has already been finalized (getEncodedBuffer called).');
-        }
-    }
-
     addPublicKeyList(keys) {
-        this.#checkFinalized();
         if (!Array.isArray(keys) || keys.length < 1 || keys.length > MAX_LIST_LEN) {
             throw new Error(`Invalid public key list: Must be an array with 1 to ${MAX_LIST_LEN} keys.`);
         }
@@ -110,7 +102,6 @@ export class CteEncoder {
     }
 
     addSignatureList(signatures) {
-        this.#checkFinalized();
         if (!Array.isArray(signatures) || signatures.length < 1 || signatures.length > MAX_LIST_LEN) {
             throw new Error(`Invalid signature list: Must be an array with 1 to ${MAX_LIST_LEN} signatures.`);
         }
@@ -140,7 +131,6 @@ export class CteEncoder {
     }
 
     addIndexReference(index) {
-        this.#checkFinalized();
         if (typeof index !== 'number' || index < 0 || index > MAX_INDEX || !Number.isInteger(index)) {
             throw new Error(`Invalid index: Must be an integer between 0 and ${MAX_INDEX}.`);
         }
@@ -152,7 +142,6 @@ export class CteEncoder {
     }
 
     addCommandData(data) {
-        this.#checkFinalized();
         let payloadBytes;
         if (typeof data === 'string') {
             payloadBytes = textEncoder.encode(data);
@@ -179,8 +168,6 @@ export class CteEncoder {
     }
 
     getEncodedBuffer() {
-        this.#checkFinalized();
-
         const bufferPtr = this.#wasmExports.cte_encoder_get_buffer_ptr(this.#encoderHandle);
         const bufferSize = this.#wasmExports.cte_encoder_get_buffer_size(this.#encoderHandle);
 
@@ -194,12 +181,6 @@ export class CteEncoder {
         }
 
         const resultBuffer = this.#wasmMemory.slice(bufferPtr, bufferPtr + bufferSize);
-
-        this.#isFinalized = true;
-
-        this.#encoderHandle = 0;
-        this.#wasmExports = null;
-        this.#wasmMemory = null;
 
         return resultBuffer;
     }
